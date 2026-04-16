@@ -7,16 +7,8 @@ import java.util.*;
 
 public class UndirectedAnalyzer {
 
-    public static ConnectivityResult analyzeExact(RcGraph fullGraph, int rcLevel) {
-        RcGraph sub = fullGraph.subgraphExact(rcLevel);
-        return analyzeSubgraph(sub, rcLevel);
-    }
-
     public static ConnectivityResult analyze(RcGraph fullGraph, int rcLevel) {
-        return analyzeSubgraph(fullGraph.subgraph(rcLevel), rcLevel);
-    }
-
-    private static ConnectivityResult analyzeSubgraph(RcGraph sub, int rcLevel) {
+        RcGraph sub = fullGraph.subgraph(rcLevel);
         Collection<Edge> edges = sub.edges();
 
         if (edges.isEmpty()) {

@@ -20,7 +20,7 @@ public class BridgeFirstCascadeRepair implements RepairStrategy {
 
     private void enforceLevel(RcGraph graph, int level, ExceptionRegistry exceptions,
                               RepairConfig config, EnforcementReport report) {
-        ConnectivityResult result = UndirectedAnalyzer.analyzeExact(graph, level);
+        ConnectivityResult result = UndirectedAnalyzer.analyze(graph, level);
         int componentsBefore = result.totalComponents();
 
         if (result.isConnected()) {
@@ -69,7 +69,7 @@ public class BridgeFirstCascadeRepair implements RepairStrategy {
             }
         }
 
-        ConnectivityResult afterResult = UndirectedAnalyzer.analyzeExact(graph, level);
+        ConnectivityResult afterResult = UndirectedAnalyzer.analyze(graph, level);
         report.recordComponentCount(level, componentsBefore, afterResult.totalComponents());
     }
 

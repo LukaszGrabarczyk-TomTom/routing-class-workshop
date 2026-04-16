@@ -47,16 +47,4 @@ public class RcGraph {
         }
         return sub;
     }
-
-    public RcGraph subgraphExact(int rcLevel) {
-        RcGraph sub = new RcGraph();
-        for (Edge edge : edges.values()) {
-            if (edge.routingClass().isPresent() && edge.routingClass().getAsInt() == rcLevel) {
-                sub.addNode(new Node(edge.sourceNodeId()));
-                sub.addNode(new Node(edge.targetNodeId()));
-                sub.addEdge(edge);
-            }
-        }
-        return sub;
-    }
 }

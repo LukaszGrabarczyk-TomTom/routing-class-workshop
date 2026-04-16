@@ -124,8 +124,10 @@ public class BridgeFirstCascadeRepairTest {
     @Test
     public void cascadeFromRc1ToRc2() {
         // A --RC1-- B    C --RC1-- D --RC2-- E
-        // RC1: C-D island → downgraded to RC2
-        // RC2: D-E and C-D(now RC2) should be connected
+        // RC1 pass: {e1} and {e2} are two components. e2 (smaller) downgraded to RC2.
+        // RC2 pass (cumulative RC<=2): {e1(RC1)} is disconnected from {e2(RC2), e3(RC2)}.
+        //   e1 is an island at RC2 level → downgraded to RC3.
+        // Total: 2 downgrades (e2: RC1→RC2, e1: RC1→RC3)
         RcGraph graph = new RcGraph();
         graph.addNode(new Node("A"));
         graph.addNode(new Node("B"));
@@ -139,7 +141,7 @@ public class BridgeFirstCascadeRepairTest {
         RepairConfig config = RepairConfig.builder().rcLevelsToProcess(1, 2).build();
         EnforcementReport report = repair.enforce(graph, noExceptions, config);
 
-        assertEquals(1, report.totalDowngrades());
+        assertEquals(2, report.totalDowngrades());
         assertEquals(0, report.totalUpgrades());
     }
 
