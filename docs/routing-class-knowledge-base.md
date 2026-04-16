@@ -29,6 +29,8 @@
 
 ## 1. What is Routing Class?
 
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §1, §7 | Confluence: [Routing class](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/687444745) (main page) | Confluence: [Routing Class Vision](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/878543164)
+
 Routing Class (RC) expresses the **relative importance of a road within a larger routing graph** — national, international, or continental. It is an abstraction away from legal road classifications (motorway, secondary road, etc.) and instead reflects **routing efficiency and hierarchy**.
 
 RC enables navigation applications to build efficient routes by:
@@ -48,6 +50,8 @@ RC and Net2Class are **not equivalent features**, but from a customer perspectiv
 ---
 
 ## 2. Routing Class in the Orbis Data Model
+
+> **Sources:** [specs.tomtomgroup.com Feature Spec 12.11-1.0](https://specs.tomtomgroup.com/orbis/documentation/feature_spec/feature_spec_12.11-1.0/external/specifications/feature_model/map_spec_topics/routing.html) — Transportation Network, Transportation Network Properties, and all sub-pages (Border Crossing, Lane Connectivity, Road Intersection, Turn Restriction, etc.)
 
 ### Feature Model Hierarchy
 
@@ -137,6 +141,8 @@ Turn restrictions are critical for RC because they affect **accessibility-aware 
 
 ## 3. The RC Scale (1–5)
 
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §2 | [specs.tomtomgroup.com — Has Routing Class](https://specs.tomtomgroup.com/orbis/documentation/feature_spec/feature_spec_12.11-1.0/external/specifications/feature_model/map_spec_topics/transportation_network_properties.html) | Team clarification (transition smoothness)
+
 | Class | Importance | Typical Roads (indicative, not prescriptive) |
 |-------|-----------|----------------------------------------------|
 | **RC1** | Highest — continental/international backbone | Motorways, major trunk roads connecting countries |
@@ -156,6 +162,8 @@ Turn restrictions are critical for RC because they affect **accessibility-aware 
 ---
 
 ## 4. Connected and Closed Graph — The Core Structural Requirement
+
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §3 (all subsections) | Confluence: [Functional Requirements](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/791355655)
 
 This is the most important section of this document. The connected and closed graph requirement is the central engineering challenge of Routing Class.
 
@@ -224,6 +232,8 @@ On-ramps (slip roads connecting lower-class roads to higher-class roads) are con
 
 ## 5. Geographic Scope
 
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §4 | Confluence: [Functional Requirements](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/791355655) FR5 | Confluence: [Connected Graph — Analysis](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/738133093) (China, India/Pakistan)
+
 ### 5.1 Continental Boundaries
 
 RC graphs are evaluated **per continent**, defined by practical routability (connected by driveable road), not political or geographic boundaries.
@@ -287,6 +297,8 @@ Small countries and territories geographically embedded within larger countries 
 
 ## 6. Islands, Ferries, and the Complementary Layer Problem
 
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §5 | Confluence: [Conflation Missing IDs](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/785323705) | Confluence: [Eurotunnel — preventive actions](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/1375274971) | `orbis-directions-routing-class` repo: ADR-003
+
 ### Ferry Requirements
 
 All islands with navigable roads (roads supporting passenger car traffic) must be connected to their continental routing graph via **ferry links** carrying an appropriate RC assignment.
@@ -342,6 +354,8 @@ These are band-aids. A proper implementation should handle Complementary Layer f
 
 ## 7. Exceptions to Connectivity
 
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §6
+
 Geographic dead-ends and real-world anomalies exist where the road network physically cannot satisfy the closed/connected requirement. These are acceptable if individually justified and registered.
 
 ### Acceptable Dead End Categories
@@ -365,6 +379,8 @@ Geographic dead-ends and real-world anomalies exist where the road network physi
 ---
 
 ## 8. How RC Is Currently Computed
+
+> **Sources:** Confluence: [Conflation Architecture](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/793688218) | Confluence: [Lead Time](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/776494189) | Confluence: [Vision](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/878543164) §2–3 | `orbis-directions-routing-class-conflation` repo: `docs/ARCHITECTURE.md`
 
 Understanding the current pipeline is essential for knowing what works, what breaks, and why.
 
@@ -421,6 +437,8 @@ The BaseMap changes at approximately **40,000 changes per hour**. With a 2–3 w
 
 ## 9. Lessons from Conflation
 
+> **Sources:** Confluence: [Conflation Process](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/767164637) | Confluence: [Conflation Missing IDs](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/785323705) | Confluence: [PoC — Conflation Matching Strategies](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/916521014) | `orbis-directions-routing-class-conflation` repo: `AGENTS.md` (domain invariants), `docs/ARCHITECTURE.md`
+
 The conflation batch process reveals several important lessons for any future RC implementation.
 
 ### The ID Mapping Problem
@@ -458,6 +476,8 @@ The Transformation Service continues running during conflation, creating race co
 
 ## 10. Lessons from Incremental Maintenance
 
+> **Sources:** Confluence: [Vision](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/878543164) §3.1.2, §4.5 | Confluence: [Transformation Logic Operation Detection](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/737621334) | Confluence: [Eurotunnel — preventive actions](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/1375274971) | Confluence: [Connected Graph — Analysis](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/738133093) (regression numbers)
+
 Between conflation cycles, the Transformation Service attempts to maintain RC values as the BaseMap changes. Its limitations are instructive.
 
 ### What It Tries to Do
@@ -484,6 +504,8 @@ For critical regions (Eurotunnel), the team implemented special logic: when road
 ---
 
 ## 11. Quality Challenges and Root Causes
+
+> **Sources:** Confluence: [Vision](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/878543164) §3 | Confluence: [Connected Graph — Known Issues](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/786670977) | Confluence: [Connected Graph — Analysis](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/738133093) | [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §11.1 (dual carriageway)
 
 ### 11.1 Lead Time (Primary Challenge)
 
@@ -523,6 +545,8 @@ The two legs of a dual carriageway (e.g., northbound and southbound motorway) ar
 
 ## 12. Connectivity Analysis — Scale of the Problem
 
+> **Sources:** Confluence: [Connected Graph — Analysis](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/738133093) | Confluence: [PoC — Conflation Matching Strategies](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/916521014) (component counts table)
+
 ### Component Counts
 
 The number of "islands" (disconnected components) in the RC graph:
@@ -555,6 +579,8 @@ This represents a **1,900% increase** in RC1 components due to conflation lag. T
 ---
 
 ## 13. Proven Techniques
+
+> **Sources:** Confluence: [PoC — Conflation Matching Strategies](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/916521014) (geometry matching) | `orbis-directions-routing-class-conflation` repo: `analysis/sygic_sample_2025_09/README.md` (top-down downgrading) | Confluence: [RATS2 Initiative](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/1219494084) | Confluence: [Lead Time — Routing on Orbis](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/776845226)
 
 ### 13.1 Geometry Matching
 
@@ -605,6 +631,8 @@ This would reduce lead time from 2–3 weeks to under 1 week and remove an entir
 
 ## 14. Quality Metrics and Checks
 
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §8, §9 | Confluence: [Routing Class Metrics](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/924844775)
+
 ### Structural Graph Checks
 
 **Connectivity (per RC level, per continent):**
@@ -638,6 +666,8 @@ This would reduce lead time from 2–3 weeks to under 1 week and remove an entir
 
 ## 15. Customers and Stakeholders
 
+> **Sources:** [`routing-class-spec.md`](/Users/roman.rypiak/Documents/playground/routing-class-spec.md) §7 | Confluence: [Routing class](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/687444745) (main page, contacts) | Confluence: [Functional Requirements](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/791355655) (intended customers) | Confluence: [Vision Overview](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/1608188029) (dependencies)
+
 ### External Customers
 
 Customers who have expressed or implied dependency on closed and connected routing graphs:
@@ -664,6 +694,8 @@ These customers arrive from Genesis (Net2Class) or HERE with an established expe
 ---
 
 ## 16. Data Format and Layer Schema
+
+> **Sources:** [specs.tomtomgroup.com — Has Routing Class](https://specs.tomtomgroup.com/orbis/documentation/feature_spec/feature_spec_12.11-1.0/external/specifications/feature_model/map_spec_topics/transportation_network_properties.html) | `orbis-directions-routing-class-conflation` repo: `docs/ARCHITECTURE.md` (tag counts, Spark schema)
 
 ### Layer Tags
 
@@ -729,6 +761,8 @@ members:
 ---
 
 ## 17. Glossary
+
+> **Sources:** Synthesized from all sources listed above.
 
 | Term | Definition |
 |------|-----------|
