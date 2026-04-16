@@ -11,3 +11,7 @@
 
 ## Cost Optimization
 - Propose using subagents with lighter models (e.g., Haiku for simple searches, Sonnet for moderate tasks) when it can reduce cost without sacrificing quality. Reserve Opus for complex reasoning or critical decisions.
+
+## Markdown Style
+- Use **Mermaid diagrams** (```` ```mermaid ````) in all `.md` files where a visual would aid understanding — architecture flows, data pipelines, decision trees, hierarchies, sequences, etc.
+- Prefer Mermaid over ASCII art for any diagram that involves more than a simple linear flow.
