@@ -941,34 +941,36 @@ Discos authentication is used for accessing layers and services. The flow is doc
 
 ---
 
-## 23. Open Conflicts Between Sources
+## 23. Resolved Conflicts Between Sources
 
-The following inconsistencies exist between the product specification (2026-04-09), the Confluence documentation, and the functional requirements. These should be resolved with the Product Manager.
+During documentation synthesis, the following inconsistencies were found between sources. They have been clarified with the team.
 
-### Conflict 1: Number of Continental Regions
+### 1. Number of Continental Regions
 
-| Source | Regions | Count |
-|--------|---------|-------|
-| Product Spec (§4.1) | Eurasia, Africa, N. America, S. America, Oceania | **5** |
-| Functional Requirements (FR5) | Mimics NDS products: EuroAfrica, Americas, AsiaOceania | **3** |
+| Source | Document | Regions | Count |
+|--------|----------|---------|-------|
+| Product Spec §4.1 | `routing-class-spec.md` (2026-04-09, Erwin Perremans) | Eurasia, Africa, N. America, S. America, Oceania | **5** |
+| Confluence Functional Requirements FR5 | [Routing Class - Connected Graph - Functional Requirements](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/791355655) (2025-09-15) | Mimics NDS products: EuroAfrica, Americas, AsiaOceania | **3** |
 
-**Impact:** Determines whether Africa must be its own connected graph or can share with Europe. Determines the worldwide component count target.
+**Resolution:** Both are correct in their own context. **Orbis defines 5 continental regions** — this is the authoritative model for RC connectivity validation. The 3 regions in the Functional Requirements reflect the NDS product split, which is how FRC delivers its output. The FRC Calculator produces 3 files (one per NDS product), but the Orbis RC team evaluates connectivity against 5 regions.
 
-### Conflict 2: Maximum Connected Components Worldwide
+### 2. Maximum Connected Components Worldwide
 
-| Source | Target |
-|--------|--------|
-| Product Spec (§8.4) | 1 per continent = **5 worldwide** |
-| Functional Requirements (FR14) | Max **3** worldwide |
+| Source | Document | Target |
+|--------|----------|--------|
+| Product Spec §8.4 | `routing-class-spec.md` (2026-04-09, Erwin Perremans) | 1 per continent = **5 worldwide** |
+| Confluence Functional Requirements FR14 | [Routing Class - Connected Graph - Functional Requirements](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/791355655) (2025-09-15) | Max **3** worldwide |
 
-### Conflict 3: Which RC Levels Require Connectivity
+**Resolution:** The aspiration is **1 connected component globally** (the entire world as a single connected graph). This may not be achievable in practice due to real-world disconnections (e.g., Darién Gap, no India-Pakistan route), so the practical target is simply **as few components as possible worldwide** — the fewer the better. The "max 3" in the Functional Requirements was an earlier, more relaxed target based on the 3 NDS product regions.
 
-| Source | Requirement |
-|--------|------------|
-| Product Spec (§3.2) | **All levels** (RC1 through RC5) hierarchically |
-| Functional Requirements (FR2, FR4) | RC3 agreed first (RC1, 1+2, 1+2+3), RC4+ agreed separately |
+### 3. RC Value Transition Smoothness
 
-The product spec appears to be the newer and more authoritative source, but the functional requirements may reflect what is practically achievable or contractually agreed.
+| Source | Document | Statement |
+|--------|----------|-----------|
+| Product Spec §3.2 | `routing-class-spec.md` (2026-04-09, Erwin Perremans) | All RC levels must be hierarchically closed and connected |
+| Confluence Functional Requirements FR2, FR4 | [Routing Class - Connected Graph - Functional Requirements](https://tomtom.atlassian.net/wiki/spaces/ORBR/pages/791355655) (2025-09-15) | RC3 connectivity agreed first (RC1, 1+2, 1+2+3), RC4+ agreed separately |
+
+**Resolution:** Both sources agree that each RC subgraph must be connected. The Functional Requirements simply reflect implementation priority (RC1-3 first, then RC4+). An important clarification: **there is no requirement for smooth transitions between RC values on the road network**. An RC1 road can connect directly to an RC5 road — it is not required to pass through RC2, RC3, RC4 in sequence. The hierarchical connectivity requirement (§4.2 of this document) is about each *subgraph* being connected, not about adjacent roads having adjacent RC values.
 
 ---
 
