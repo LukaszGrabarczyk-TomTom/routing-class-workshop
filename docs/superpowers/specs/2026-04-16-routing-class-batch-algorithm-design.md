@@ -89,7 +89,6 @@ The road network is a **directed graph**. Each edge is a road segment, each node
 ### Ferry Links
 - Modeled as edges like any other road, with a ferry attribute flag
 - Participate in connectivity analysis
-- Luxembourg has only 1 ferry feature
 
 ### Turn Restrictions
 - 6,549 restriction relations (from/to/via) in Luxembourg PBF
@@ -103,7 +102,7 @@ The road network is a **directed graph**. Each edge is a road segment, each node
 **Responsibility:** Read PBF, construct the in-memory directed road graph, extract existing RC values.
 
 ### Steps
-1. Read all road ways (features with `highway=*` tag) and the single ferry feature
+1. Read all road ways (features with `highway=*` tag) and all ferry features
 2. Read all nodes referenced by road ways (for coordinates and shared-node connectivity)
 3. Build directed edges per directionality rules above
 4. Establish connectivity via shared node IDs between ways (1.66M intersection nodes in Luxembourg)
@@ -116,9 +115,18 @@ The road network is a **directed graph**. Each edge is a road segment, each node
 - Pedestrian-only features (`highway=footway`, `highway=steps`, `highway=path`, `highway=cycleway`, `highway=pedestrian`) are excluded from graph construction and from comparison — they're irrelevant to vehicle routing and are universally RC5
 
 ### Source Abstraction
-- `GraphBuilder` interface with method: `RoadGraph build(InputStream source)`
-- `PbfGraphBuilder` implements this for PBF files
-- Future: `RestApiGraphBuilder` for the production system
+
+`RoadGraphBuilder` uses the builder pattern to decouple graph construction from data sources:
+
+```
+RoadGraphBuilder builder = new RoadGraphBuilder();
+builder.addRoad(id, geometry, attributes);
+builder.addConnector(nodeId, coordinates);
+builder.addRestriction(fromEdge, viaNode, toEdge);
+RoadGraph graph = builder.build();
+```
+
+The PBF parser (`PbfReader`) reads the file and drives the builder — it is a utility, not the interface itself. A future REST API adapter would drive the same builder with data from API responses. Unit tests construct graphs directly via the builder without needing PBF fixtures.
 
 ### PBF Library
 - `osm4j-pbf` for reading, `osm4j-pbf` or `osmosis` for writing
@@ -132,7 +140,9 @@ The core algorithm. Two steps: attribute-based seeding, then centrality-based re
 
 ### Step 1: Attribute Seed
 
-Assign initial RC candidate based on road attributes. The mapping is derived from the actual tag distributions observed in the Luxembourg PBF:
+Assign initial RC candidate based on road attributes. The mapping is derived from observed tag distributions in the prototype PBF but is designed to work with any Orbis PBF:
+
+**Missing tag semantics:** The attribute seeder treats absent tags as the negative/default value. For example, a road without a `controlled_access` tag is treated as having no controlled access. The seed table only checks for positive matches — this works regardless of whether a PBF omits the tag entirely or explicitly sets it to `no`.
 
 | Condition (evaluated top-to-bottom, first match wins) | Seed RC |
 |---|---|
@@ -177,7 +187,7 @@ Use betweenness centrality to adjust seed values based on actual routing importa
 **Edge Weighting:**
 - Use `speed:free_flow:forward` / `speed:free_flow:backward` where available (88K roads have this)
 - Fall back to `maxspeed` (146K roads) where free-flow speed is missing
-- Fall back to road-type-based speed estimate as last resort
+- Fall back to road-type-based speed estimate as last resort (per-country configuration — speed norms vary by country, e.g., Germany autobahn vs. 130 km/h in France)
 - Weight = edge length / speed (travel time). Lower travel time = preferred path = higher centrality for roads used.
 
 **Adjustment Logic:**
@@ -186,7 +196,7 @@ Use betweenness centrality to adjust seed values based on actual routing importa
 3. **Promote** (RC - 1): edges above the 85th percentile of their seed group. These are roads whose routing importance exceeds what their attributes suggest.
 4. **Demote** (RC + 1): edges below the 15th percentile of their seed group. These are roads whose attributes overstate their routing importance.
 5. Clamp to [1, 5] range
-6. Promotions/demotions are limited to 1 level per edge. A secondary road can go from RC4 to RC3 but not to RC2 in this step.
+6. Promotions/demotions are limited to 1 level per edge in this step. A secondary road can go from RC4 to RC3 but not to RC2 via centrality alone. However, Phase 3 (connectivity enforcement) has **no such cap** — if a road is structurally necessary to connect RC subgraphs, it will be promoted as many levels as needed regardless of its seed or centrality score.
 
 **Thresholds (85th/15th percentile) are configurable** and will be tuned based on comparison results.
 
@@ -194,39 +204,34 @@ Use betweenness centrality to adjust seed values based on actual routing importa
 
 ## 7. Phase 3: Enforce & Validate
 
-After Phase 2, RC values reflect attributes + routing importance but may violate connectivity and closure constraints. Phase 3 repairs this.
+After Phase 2, RC values reflect attributes + routing importance but may violate connectivity constraints. Phase 3 repairs this.
 
-### Connectivity Enforcement (Top-Down)
+### Connectivity Enforcement (Top-Down with Bridging)
 
 For each RC level starting from the top:
 
 **RC1:**
 1. Extract the RC1 subgraph (all edges with computedRc = 1)
 2. Compute strongly connected components (SCCs) using Tarjan's algorithm on the directed graph
-3. Keep the largest SCC as RC1
-4. Edges in smaller SCCs: demote to RC2
+3. Identify the largest SCC as the primary component
+4. **Bridge smaller SCCs:** For each smaller SCC, find the shortest path in the full graph to the primary SCC. If the connecting path is within a configurable threshold (e.g., a small number of hops via RC2/RC3 roads), promote those bridge edges to RC1. This connects the smaller SCC to the primary without losing RC1 coverage.
+5. **Demote unreachable SCCs:** Only SCCs that cannot be connected within the threshold get demoted to RC2.
 
 **RC1+RC2:**
 1. Extract the RC <= 2 subgraph
 2. Compute SCCs
-3. Keep the largest SCC intact
-4. Edges in smaller SCCs that are RC2: demote to RC3 (RC1 edges untouched — already validated)
+3. Bridge smaller SCCs to the largest via shortest-path promotion (same approach as above)
+4. Demote only unreachable RC2 edges to RC3 (RC1 edges untouched — already validated)
 
 **Repeat for RC <= 3, RC <= 4.** RC5 is the catch-all.
 
-### Closure Enforcement
+**Why bridging matters:** A naive "keep largest, demote rest" approach is too aggressive. If Phase 2 produces multiple RC1 components that are close to each other, we'd lose significant RC1 coverage by discarding all but the biggest. Bridging preserves coverage while still guaranteeing a single connected component.
 
-After connectivity enforcement, check closure: no RC subgraph should require detours through lower-class roads.
-
-For each RC level n (starting from 1):
-1. In the RC <= n subgraph, find edges that are only reachable from the main SCC via edges with RC > n
-2. Promote those bridge edges to RC n (they're structurally necessary)
-
-This is a small corrective pass — most closure violations are already prevented by connectivity enforcement.
+**Note on closure:** A separate closure enforcement step is not needed. Once each RC subgraph forms a single SCC, closure is guaranteed by definition — every node in the SCC can reach every other node using only edges within that component, so no detours through lower-class roads are possible.
 
 ### Accessibility Awareness
 
-Both SCC computation and closure checks use the **directed** graph with:
+SCC computation uses the **directed** graph with:
 - Oneway restrictions applied (edge direction)
 - Turn restrictions from PBF relations applied (prohibited from/to/via sequences removed from adjacency)
 
@@ -235,10 +240,10 @@ This ensures the connectivity guarantee holds under real-world permanent driving
 ### Validation Metrics (produced, not enforced)
 
 After enforcement, compute and report:
-- Number of SCCs per RC level (target: 1 each for Luxembourg)
+- Number of SCCs per RC level (target: 1 each)
 - Number of dead ends per RC level
-- Closure violations remaining (should be 0)
 - Number of promotions/demotions this phase made (high count = Phase 2 needs tuning)
+- Number of bridge edges promoted per RC level
 
 ---
 
@@ -276,19 +281,18 @@ Grouped by (computed_rc, existing_rc):
 com.tomtom.routing/
   model/
     RoadGraph              — graph data structure
+    RoadGraphBuilder        — builder pattern: addRoad(), addConnector(), addRestriction(), build()
     RoadEdge               — edge with attributes, RC values
     RoadNode               — node with adjacency
     RoutingClass            — enum: RC1-RC5
   io/
-    GraphBuilder            — interface: build RoadGraph from source
-    PbfGraphBuilder         — PBF implementation of GraphBuilder
+    PbfReader               — reads PBF and drives RoadGraphBuilder
     PbfWriter               — write output PBF (geometry + computed RC)
   algorithm/
     AttributeSeeder         — Phase 2 step 1: attributes to seed RC
     CentralityComputer      — Phase 2 step 2: sampled betweenness centrality
     RcRefiner               — Phase 2: combine seed + centrality adjustments
-    ConnectivityEnforcer    — Phase 3: SCC-based top-down enforcement
-    ClosureEnforcer         — Phase 3: closure repair via bridge promotion
+    ConnectivityEnforcer    — Phase 3: SCC-based top-down enforcement with bridging
   comparison/
     RcComparator            — compare computed vs existing RC
     ReportWriter            — metrics report, per-road diff CSV, aggregated summary CSV
@@ -318,8 +322,9 @@ Graph algorithms (Tarjan's SCC, Dijkstra, betweenness centrality) implemented in
 | Centrality sample size | 2,000 | Number of source nodes for sampled betweenness |
 | Promote threshold | 85th percentile | Centrality above this triggers promotion |
 | Demote threshold | 15th percentile | Centrality below this triggers demotion |
-| Max promotion/demotion steps | 1 | How many RC levels an edge can shift in refinement |
-| Speed fallback (by road type) | Configurable map | Default speeds when no speed tags available |
+| Max promotion/demotion steps | 1 | How many RC levels an edge can shift in centrality refinement (Phase 3 has no cap) |
+| Speed fallback (per-country, by road type) | Configurable map | Default speeds when no speed tags available. Per-country because speed norms vary (e.g., motorway: 130 km/h in LUX/FRA, no limit in DEU) |
+| Bridge threshold | Configurable | Max shortest-path cost to bridge disconnected SCCs before demoting them |
 
 All parameters are tunable. Initial values are starting points to be adjusted based on comparison results.
 
