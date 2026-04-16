@@ -9,6 +9,9 @@ import java.util.*;
 
 public class BridgeFirstCascadeRepair implements RepairStrategy {
 
+    // Note: enableDirectedPass (Pass 2 with DirectedAnalyzer/Tarjan SCC) is not yet wired in.
+    // Currently only the undirected pass (Pass 1) is used for connectivity analysis.
+
     @Override
     public EnforcementReport enforce(RcGraph graph, ExceptionRegistry exceptions, RepairConfig config) {
         EnforcementReport report = new EnforcementReport();

@@ -9,7 +9,7 @@ public record ConnectivityResult(
     List<Set<String>> islands
 ) {
     public int totalComponents() {
-        return 1 + islands.size();
+        return mainComponent.isEmpty() && islands.isEmpty() ? 0 : 1 + islands.size();
     }
 
     public boolean isConnected() {

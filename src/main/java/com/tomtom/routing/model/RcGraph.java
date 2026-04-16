@@ -1,7 +1,6 @@
 package com.tomtom.routing.model;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class RcGraph {
 
@@ -36,6 +35,7 @@ public class RcGraph {
         return Collections.unmodifiableList(adjacency.getOrDefault(nodeId, List.of()));
     }
 
+    /** Returns a subgraph with edges where RC &lt;= maxRcLevel. Edge objects are shared references, not copies. */
     public RcGraph subgraph(int maxRcLevel) {
         RcGraph sub = new RcGraph();
         for (Edge edge : edges.values()) {
