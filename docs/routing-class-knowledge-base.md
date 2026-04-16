@@ -53,17 +53,28 @@ RC and Net2Class are **not equivalent features**, but from a customer perspectiv
 
 The Orbis Feature Model organizes transportation data in a hierarchy:
 
+```mermaid
+graph TD
+    TL["Transportation Line (Line geometry)"]
+    TL --> RL["Road Line"]
+    TL --> FL["Ferry Line"]
+    TL --> RwL["Railway Line"]
+
+    RL --> MRL["Major Road Line<br/><i>14 features: Motorway, Trunk Road,<br/>Primary Road, etc.</i>"]
+    RL --> MiRL["Minor Road Line<br/><i>Service Road, Track Road, etc.</i>"]
+    FL --> FR["Ferry Route"]
+    RwL --> CRL["Core Railway Line"]
+    RwL --> ORL["Other Railway Line"]
+
+    style MRL fill:#d4edda,stroke:#28a745
+    style MiRL fill:#d4edda,stroke:#28a745
+    style FR fill:#d4edda,stroke:#28a745
+    style RwL fill:#f8d7da,stroke:#dc3545
+    style CRL fill:#f8d7da,stroke:#dc3545
+    style ORL fill:#f8d7da,stroke:#dc3545
 ```
-Transportation Line (Line geometry)
-├── Road Line
-│   ├── Major Road Line (14 features: Motorway, Trunk Road, Primary Road, etc.)
-│   └── Minor Road Line (Service Road, Track Road, etc.)
-├── Ferry Line
-│   └── Ferry Route
-└── Railway Line
-    ├── Core Railway Line
-    └── Other Railway Line
-```
+
+> Green = Has Routing Class property. Red = No Routing Class property.
 
 **Major Road Line features** (14 total): Living Street, Motorway, Motorway Link, Primary Link, Primary Road, Residential Road, Road Under Construction (deprecated), Secondary Link, Secondary Road, Tertiary Link, Tertiary Road, Trunk Link, Trunk Road, Unclassified Road.
 
@@ -172,6 +183,24 @@ RC1 + RC2 + RC3 + RC4 + RC5 (full graph) → must be closed and connected
 
 Each RC level adds branches to the graph above it but **must not be required** to close or connect the higher levels.
 
+```mermaid
+graph LR
+    subgraph "RC1 only — must be connected"
+        A1((A)) <--> B1((B)) <--> C1((C))
+    end
+    subgraph "RC1 + RC2 — must be connected"
+        A2((A)) <--> B2((B)) <--> C2((C))
+        B2 <--> D2((D))
+        D2 <--> E2((E))
+    end
+    subgraph "RC1 + RC2 + RC3 — must be connected"
+        A3((A)) <--> B3((B)) <--> C3((C))
+        B3 <--> D3((D))
+        D3 <--> E3((E))
+        E3 <--> F3((F)) <--> G3((G))
+    end
+```
+
 The **RC1-only graph** being closed and connected is the **hardest requirement**. NDS-based systems and offline routing customers depend on the RC1 graph as a self-sufficient backbone.
 
 ### 4.3 Assignment Principle
@@ -208,6 +237,26 @@ RC graphs are evaluated **per continent**, defined by practical routability (con
 | **Oceania** | Australia and surrounding region |
 
 No closed/connected requirement exists **between** continents. The aspiration is 1 connected component globally, but real-world disconnections make this impractical — the target is as few components as possible worldwide (see [§18](#18-resolved-conflicts-between-sources)).
+
+```mermaid
+graph TD
+    subgraph "Continental Routing Regions"
+        EU["Eurasia<br/><i>Europe + Asia as one landmass</i>"]
+        AF["Africa"]
+        NA["North America"]
+        SA["South America"]
+        OC["Oceania<br/><i>Australia + surrounding</i>"]
+    end
+
+    EU -.-x|"Sinai Peninsula<br/>(treated as separate)"| AF
+    NA -.-x|"Darién Gap<br/>(no driveable road)"| SA
+
+    style EU fill:#d4edda,stroke:#28a745
+    style AF fill:#d4edda,stroke:#28a745
+    style NA fill:#d4edda,stroke:#28a745
+    style SA fill:#d4edda,stroke:#28a745
+    style OC fill:#d4edda,stroke:#28a745
+```
 
 > **Design choice:** Although Africa and Eurasia are physically connected via the Sinai Peninsula, they are treated as separate continental routing graphs.
 
@@ -250,10 +299,28 @@ All islands with navigable roads (roads supporting passenger car traffic) must b
 
 This is one of the most subtle issues in RC and a **critical design lesson**. The current FRC Generator runs on **NDS**, which is compiled from Orbis. NDS treats certain features from the **Complementary Layer** (layer ID 21263) as ferries — specifically features tagged `service=car_shuttle`.
 
-The most critical example is the **Eurotunnel** (Channel Tunnel), which:
-- Is represented as `service=car_shuttle` in the Complementary Layer
-- Gets compiled into NDS as a ferry and receives RC1 from FRC
-- **Cannot receive RC in the Orbis Routing Class layer** because RC can only be applied to BaseMap features, not Complementary Layer features
+The most critical example is the **Eurotunnel** (Channel Tunnel):
+
+```mermaid
+flowchart LR
+    subgraph Orbis
+        CL["Complementary Layer<br/><code>service=car_shuttle</code>"]
+        BM["BaseMap<br/>(Road Lines)"]
+        RCL["RC Layer"]
+        BM -.->|"RC can be applied"| RCL
+        CL -.-x|"RC CANNOT be applied"| RCL
+    end
+
+    subgraph NDS
+        NF["NDS Ferry<br/>(compiled from Complementary Layer)"]
+    end
+
+    CL -->|"compiled as ferry"| NF
+    NF -->|"FRC assigns RC1"| LOST["RC1 value lost<br/>— no way to store it in Orbis"]
+
+    style LOST fill:#f8d7da,stroke:#dc3545
+    style CL fill:#fff3cd,stroke:#ffc107
+```
 
 This means the Eurotunnel — an RC1 link connecting the UK to continental Europe — **has no RC in Orbis**, creating a major connectivity gap.
 
@@ -303,11 +370,21 @@ Understanding the current pipeline is essential for knowing what works, what bre
 
 ### The Pipeline
 
-```
-Orbis BaseMap → OPC → NDS Compilation → FRC Generator → Conflation → RC Layer
-                                                                        ↑
-                                                          Transformation Service
-                                                          (24/7 incremental maintenance)
+```mermaid
+flowchart LR
+    BM["Orbis BaseMap<br/>(all layers)"] --> OPC["OPC<br/><i>1–2 days</i>"]
+    OPC --> FC["Format Conversion<br/><i>~1 day</i>"]
+    FC --> NDS["NDS Compilation<br/><i>~5 days</i>"]
+    NDS --> FRC["FRC Generator<br/><i>~2 days</i>"]
+    FRC --> CON["Conflation<br/><i>~1 hour</i>"]
+    CON --> RCL["RC Layer"]
+
+    RCL <-.-> TS["Transformation Service<br/><i>24/7 incremental</i>"]
+
+    FC -.->|"ID mappings<br/>(ProductId ↔ OrbisId)"| CON
+
+    style RCL fill:#d4edda,stroke:#28a745
+    style TS fill:#fff3cd,stroke:#ffc107
 ```
 
 | Step | Duration | What It Does |
@@ -455,7 +532,17 @@ The number of "islands" (disconnected components) in the RC graph:
 | **From FRC delivery** (idealized) | 67 | 346 | 1,909 |
 | **After conflation** (applied to current map) | 1,346 | 2,885 | 43,343,675 |
 
-This represents a **1,900% increase** in RC1 components due to conflation lag. The Transformation Service introduces further regression (3,610 → 4,004 islands).
+```mermaid
+graph LR
+    FRC["FRC Output<br/><b>67</b> RC1 components"] -->|"2-3 week lag<br/>+ ID mapping losses"| CON["After Conflation<br/><b>1,346</b> RC1 components"]
+    CON -->|"incremental maintenance<br/>introduces further regression"| TS["Current State<br/><b>~1,673</b> RC1 components"]
+
+    style FRC fill:#d4edda,stroke:#28a745
+    style CON fill:#fff3cd,stroke:#ffc107
+    style TS fill:#f8d7da,stroke:#dc3545
+```
+
+This represents a **1,900% increase** in RC1 components due to conflation lag. The Transformation Service introduces further regression (3,610 → 4,004 total islands).
 
 ### Key Takeaways
 
@@ -488,12 +575,18 @@ When ProductIds cannot be found during conflation, geometry can be used to match
 
 A proof of concept for Slovakia demonstrated an algorithmic approach to enforcing connectivity:
 
-1. Extract all highways with RC, excluding construction
-2. Compute connected components for RC=1
-3. **Downgrade** all but the largest component to RC2
-4. Compute connected components for RC≤2
-5. **Downgrade** all but the largest component to RC3
-6. Repeat for each level
+```mermaid
+flowchart TD
+    A["Extract all highways with RC<br/>(exclude construction)"] --> B["Compute connected components<br/>for RC=1"]
+    B --> C{"Multiple<br/>components?"}
+    C -->|Yes| D["Keep largest component as RC1<br/>Downgrade rest to RC2"]
+    C -->|No| E["RC1 is connected"]
+    D --> F["Compute connected components<br/>for RC≤2"]
+    F --> G{"Multiple<br/>components?"}
+    G -->|Yes| H["Keep largest component as RC≤2<br/>Downgrade rest to RC3"]
+    G -->|No| I["RC1+2 is connected"]
+    H --> J["Repeat for each level..."]
+```
 
 **Takeaway:** Connectivity can be enforced algorithmically by identifying the main component at each level and demoting disconnected islands. This trades precision (some roads get a different RC than FRC computed) for connectivity guarantees.
 
