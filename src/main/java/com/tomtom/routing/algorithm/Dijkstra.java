@@ -27,25 +27,19 @@ public class Dijkstra {
     );
 
     public static Result run(RoadGraph graph, long sourceNodeId) {
-        return run(graph, sourceNodeId, Integer.MAX_VALUE);
-    }
-
-    public static Result run(RoadGraph graph, long sourceNodeId, int maxVisitedNodes) {
         Map<Long, Double> dist = new HashMap<>();
         Map<Long, RoadEdge> predEdge = new HashMap<>();
         PriorityQueue<long[]> pq = new PriorityQueue<>(Comparator.comparingDouble(a -> Double.longBitsToDouble(a[1])));
-        int visited = 0;
 
         dist.put(sourceNodeId, 0.0);
         pq.add(new long[]{sourceNodeId, Double.doubleToLongBits(0.0)});
 
-        while (!pq.isEmpty() && visited < maxVisitedNodes) {
+        while (!pq.isEmpty()) {
             long[] current = pq.poll();
             long nodeId = current[0];
             double d = Double.longBitsToDouble(current[1]);
 
             if (d > dist.getOrDefault(nodeId, Double.MAX_VALUE)) continue;
-            visited++;
 
             RoadNode node = graph.getNode(nodeId);
             if (node == null) continue;

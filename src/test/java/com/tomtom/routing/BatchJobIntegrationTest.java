@@ -34,7 +34,7 @@ public class BatchJobIntegrationTest {
         AttributeSeeder seeder = new AttributeSeeder();
         seeder.seed(graph);
         seeder.seedFerries(graph);
-        var centrality = CentralityComputer.compute(graph, 200);
+        var centrality = CentralityComputer.compute(graph, 2000);
         new RcRefiner(0.85, 0.15).refine(graph, centrality);
 
         ConnectivityEnforcer enforcer = new ConnectivityEnforcer();
