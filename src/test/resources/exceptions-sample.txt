@@ -1,0 +1,6 @@
+# Peninsula dead ends — reviewed 2026-01-15
+e100 # Nordkapp peninsula
+e101 # Gibraltar terminus
+
+# Mountain terminus
+e200 # Mont Blanc summit road
