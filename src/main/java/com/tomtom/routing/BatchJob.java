@@ -11,7 +11,7 @@ import java.io.IOException;
 
 public class BatchJob {
 
-    private static final int DEFAULT_CENTRALITY_SAMPLE_SIZE = 2000;
+    private static final int DEFAULT_CENTRALITY_SAMPLE_SIZE = 500;
     private static final double DEFAULT_PROMOTE_PERCENTILE = 0.85;
     private static final double DEFAULT_DEMOTE_PERCENTILE = 0.15;
 

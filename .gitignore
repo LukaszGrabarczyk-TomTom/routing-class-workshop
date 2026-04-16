@@ -15,6 +15,11 @@ target/
 # PBF data files
 *.pbf
 
+# Output files
+*_computed_rc.osm.pbf
+*_diff.csv
+*_summary.csv
+
 # OS files
 .DS_Store
 Thumbs.db

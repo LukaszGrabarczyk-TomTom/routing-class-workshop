@@ -7,7 +7,13 @@ import java.util.*;
 
 public class CentralityComputer {
 
+    private static final int DEFAULT_MAX_VISITED_NODES = 10_000;
+
     public static Map<String, Double> compute(RoadGraph graph, int sampleSize) {
+        return compute(graph, sampleSize, DEFAULT_MAX_VISITED_NODES);
+    }
+
+    public static Map<String, Double> compute(RoadGraph graph, int sampleSize, int maxVisitedNodes) {
         Map<String, Double> centrality = new HashMap<>();
 
         for (RoadEdge edge : graph.getEdges()) {
@@ -20,7 +26,7 @@ public class CentralityComputer {
 
         for (int i = 0; i < effectiveSample; i++) {
             long sourceId = nodeIds.get(i);
-            Dijkstra.Result result = Dijkstra.run(graph, sourceId);
+            Dijkstra.Result result = Dijkstra.run(graph, sourceId, maxVisitedNodes);
 
             for (long targetId : result.reachableNodes()) {
                 if (targetId == sourceId) continue;
