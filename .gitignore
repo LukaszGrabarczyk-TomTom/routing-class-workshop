@@ -12,6 +12,9 @@ target/
 # Claude Code
 .claude/settings.local.json
 
+# PBF data files
+*.pbf
+
 # OS files
 .DS_Store
 Thumbs.db
