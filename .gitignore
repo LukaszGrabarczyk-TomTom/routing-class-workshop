@@ -10,7 +10,7 @@ target/
 .vscode/
 
 # Claude Code
-.claude/
+.claude/settings.local.json
 
 # OS files
 .DS_Store
