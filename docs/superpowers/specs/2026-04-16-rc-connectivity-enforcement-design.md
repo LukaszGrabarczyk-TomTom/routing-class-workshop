@@ -35,7 +35,7 @@ The module operates on an abstract directed graph. No Orbis/NDS/Parquet concepts
 ### Graph Primitives
 
 - **Node** — A junction point (maps to Connector in Orbis). Has an ID.
-- **Edge** — A directed road segment between two nodes. Has an ID, an RC value (1–5 or absent), and a direction (forward, reverse, bidirectional).
+- **Edge** — A road segment between two nodes. Has an ID, an RC value (1–5 or absent), and a traversal mode: `FORWARD` (source→target only), `REVERSE` (target→source only), or `BOTH` (bidirectional). Pass 1 ignores traversal mode; Pass 2 respects it.
 - **RcGraph** — A collection of nodes and edges. Can produce subgraphs filtered by RC level.
 
 ### RC Subgraph Extraction
