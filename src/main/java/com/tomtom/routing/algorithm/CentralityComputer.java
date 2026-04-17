@@ -26,7 +26,7 @@ public class CentralityComputer {
         }
 
         List<Long> nodeIds = new ArrayList<>(graph.getNodes().keySet());
-        Collections.shuffle(nodeIds);
+        Collections.shuffle(nodeIds, new Random(42));
         int effectiveSample = Math.min(sampleSize, nodeIds.size());
 
         // Process sources in parallel — each Brandes SSSP is independent
